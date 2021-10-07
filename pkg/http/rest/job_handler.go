@@ -10,7 +10,9 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"log"
+	"math/rand"
 	"net/http"
+	"time"
 )
 
 type Job struct {
@@ -41,7 +43,6 @@ func genXid() string{
 }
 
 func processImage(job repository.JobStorage, data []Job, jobid string) bool{
-	log.Println(len(data))
 	var status = 1
 	for i:=0; i < len(data); i++ {
 		storeid := data[i].Store_id
@@ -49,7 +50,6 @@ func processImage(job repository.JobStorage, data []Job, jobid string) bool{
 		for j:=0; j < len(data[i].Image_url); j++ {
 			path:=data[i].Image_url[j]
 
-			log.Println(path)
 			resp, err := http.Get(path)
 			if err != nil {
 				log.Fatal(err)
@@ -60,23 +60,20 @@ func processImage(job repository.JobStorage, data []Job, jobid string) bool{
 				status = 2
 				repository.AddFailed(jobid, storeid, job)
 				break;
-				//log.Fatal(err)
 			}
 			g := m.Bounds()
-
-			// Get height and width
 			height := g.Dy()
 			width := g.Dx()
-
-			// The resolution is height x width
 			perimeter := 2 * (height + width)
+
+			rand.Seed(time.Now().Unix())
+			randomNum := 100 + rand.Intn(400-100)
+			time.Sleep(time.Duration(randomNum) * time.Millisecond)
 
 			_, _ = repository.AddImage(jobid, storeid, perimeter, job)
 			if err != nil {
 				return false
 			}
-			// Print results
-			//log.Println(height, width, resolution, "pixels")
 		}
 	}
 
@@ -89,7 +86,6 @@ func addJob(job repository.JobStorage) func(w http.ResponseWriter, r *http.Reque
 		decoder := json.NewDecoder(r.Body)
 		var newJob allJob
 		err := decoder.Decode(&newJob)
-		log.Println(newJob)
 		if err != nil || len(newJob.Visits) != newJob.Count   {
 			w.WriteHeader(400)
 			m:=make(map[string]string)
@@ -107,7 +103,6 @@ func addJob(job repository.JobStorage) func(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusCreated)
 		m:=make(map[string]string)
 		m["jobid"] = jobid
-		log.Println("jobid ",m["jobid"])
 		json.NewEncoder(w).Encode(m)
 	}
 }
@@ -159,7 +154,6 @@ func getJobStatus(job repository.JobStorage) func(w http.ResponseWriter, r *http
 				storeID.StoreID = id
 				m.Error = append(m.Error, storeID)
 			}
-			log.Println(m)
 			json.NewEncoder(w).Encode(m)
 			return
 		}

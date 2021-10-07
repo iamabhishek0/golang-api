@@ -39,11 +39,9 @@ func AddImage(jobid string, storeid string, perimeter int, job JobStorage) (stri
 func CheckStatus(jobid string,job JobStorage) (int, error) {
 	var status int;
 	err := job.Db.DB().QueryRow(checkStatus, jobid).Scan(&status)
-	log.Println("Job STATuS: ",status, err)
 	if err!=nil{
 		return 0,err
 	}
-	log.Println("Job STATuS: ",status)
 
 	return status,nil
 }
@@ -67,7 +65,6 @@ func UpdateJobStatus(jobid string, status int, job JobStorage) (string, error) {
 func GetFailedStoreId(jobid string, job JobStorage) ([]string, error){
 	var storeid string
 	var storelist []string
-	log.Println("HEYYYYYYYYYYYY")
 	rows, err := job.Db.DB().Query(getFailedStoreID, jobid)
 	for rows.Next() {
 		err := rows.Scan(&storeid)
@@ -75,8 +72,6 @@ func GetFailedStoreId(jobid string, job JobStorage) ([]string, error){
 			log.Fatal(err)
 		}
 		storelist = append(storelist, storeid)
-		//log.Println(id, name)
 	}
-	log.Println(storelist)
 	return storelist, err
 }
