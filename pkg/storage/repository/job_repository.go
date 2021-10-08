@@ -22,50 +22,54 @@ func NewJobRepository(dbStorage *storage.Storage) *JobStorage {
 
 func AddStatus(jobid string, job JobStorage) (string, error) {
 	_, err := job.Db.DB().Exec(addJobStatus, jobid, 0)
-	if err!=nil{
-		return "",nil
+	if err != nil {
+		return "", err
 	}
-	return jobid,nil
+	return jobid, nil
 }
 
 func AddImage(jobid string, storeid string, perimeter int, job JobStorage) (string, error) {
 	_, err := job.Db.DB().Exec(addImageData, jobid, storeid, perimeter)
-	if err!=nil{
-		return "",nil
+	if err != nil {
+		return "", nil
 	}
-	return jobid,nil
+	return jobid, nil
 }
 
-func CheckStatus(jobid string,job JobStorage) (int, error) {
-	var status int;
+func CheckStatus(jobid string, job JobStorage) (int, error) {
+	var status int
 	err := job.Db.DB().QueryRow(checkStatus, jobid).Scan(&status)
-	if err!=nil{
-		return 0,err
+	if err != nil {
+		return 0, err
 	}
 
-	return status,nil
+	return status, nil
 }
 
-func AddFailed(jobid string, storeid string, job JobStorage)  (string, error) {
+func AddFailed(jobid string, storeid string, job JobStorage) (string, error) {
 	_, err := job.Db.DB().Exec(addFailedJob, jobid, storeid)
-	if err!=nil{
-		return "",nil
+	if err != nil {
+		return "", err
 	}
-	return jobid,nil
+	return jobid, nil
 }
 
 func UpdateJobStatus(jobid string, status int, job JobStorage) (string, error) {
 	_, err := job.Db.DB().Exec(updateJobStatus, status, jobid)
-	if err!=nil{
-		return "",nil
+	if err != nil {
+		return "", err
 	}
-	return jobid,nil
+	return jobid, nil
 }
 
-func GetFailedStoreId(jobid string, job JobStorage) ([]string, error){
+func GetFailedStoreId(jobid string, job JobStorage) ([]string, error) {
 	var storeid string
 	var storelist []string
 	rows, err := job.Db.DB().Query(getFailedStoreID, jobid)
+	if err != nil {
+		return []string{}, err
+	}
+
 	for rows.Next() {
 		err := rows.Scan(&storeid)
 		if err != nil {

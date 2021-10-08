@@ -6,7 +6,6 @@ import (
 	"log"
 )
 
-const defaultSchema = `CREATE TABLE IF NOT EXISTS users(id SERIAL PRIMARY KEY,name TEXT,email TEXT,phone TEXT)`
 
 type storage struct {
 	db *sql.DB
@@ -28,7 +27,6 @@ func NewStorage() (Storage, error) {
 		return nil, err
 	}
 	log.Println("Connected to repository")
-	s.db.Exec(defaultSchema)
 	return &storage{s.db}, nil
 }
 
