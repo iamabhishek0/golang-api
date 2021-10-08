@@ -70,7 +70,7 @@ func processImage(job repository.JobStorage, data []Job, jobid string) error{
 			perimeter := 2 * (height + width)
 
 			rand.Seed(time.Now().Unix())
-			randomNum := 10000 + rand.Intn(400-100)
+			randomNum := 100 + rand.Intn(400-100)
 			time.Sleep(time.Duration(randomNum) * time.Millisecond)
 
 			_, _ = repository.AddImage(jobid, storeid, perimeter, job)
