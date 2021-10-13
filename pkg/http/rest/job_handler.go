@@ -111,7 +111,9 @@ func imageWorker(wg *sync.WaitGroup, jobDB repository.JobStorage) {
 		if err == nil {
 			imageResults <- ImageResult{perimeter, job.jobid, job.storeid}
 		}
-		repository.UpdateJobStatus(job.jobid, *job.status, jobDB)
+		if *job.status==2 {
+			repository.UpdateJobStatus(job.jobid, *job.status, jobDB)
+		}
 	}
 	wg.Done()
 }
@@ -161,7 +163,7 @@ func processPerimeter(data ImageJob) (perimeter int, err error) {
 	perimeter = 2 * (height + width)
 
 	rand.Seed(time.Now().Unix())
-	randomNum := 100 + rand.Intn(400-100)
+	randomNum := 10000 + rand.Intn(400-100)
 	time.Sleep(time.Duration(randomNum) * time.Millisecond)
 
 	return perimeter, nil
