@@ -26,6 +26,7 @@ func NewStorage() (Storage, error) {
 		log.Println("Error while connecting to repository ", err)
 		return nil, err
 	}
+
 	log.Println("Connected to repository")
 	return &storage{s.db}, nil
 }

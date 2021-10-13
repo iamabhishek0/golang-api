@@ -12,6 +12,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -37,9 +38,96 @@ type FailedStoreID struct {
 	Error  []StoreIdError `json:"error"`
 }
 
+type WorkerJob struct {
+	jobid string
+	data  Job
+	job   repository.JobStorage
+}
+type Result struct {
+	jobid  string
+	status int
+}
+
+var visitJobs = make(chan WorkerJob, 10)
+var results = make(chan Result, 10)
+
 func genXid() string {
 	id := xid.New()
 	return id.String()
+}
+
+
+func worker(wg *sync.WaitGroup) {
+	for job := range visitJobs {
+		var status = 1
+		processURL(job.jobid, job.data, &status, job.job)
+		results <- Result{job.jobid, status}
+	}
+	wg.Done()
+}
+
+func createWorkerPool(noOfWorkers int) {
+	var wg sync.WaitGroup
+	for i := 0; i < noOfWorkers; i++ {
+		wg.Add(1)
+		go worker(&wg)
+	}
+	wg.Wait()
+	close(results)
+}
+
+func allocateVisits(data []Job, jobid string, job repository.JobStorage) {
+	for i := 0; i < len(data); i++ {
+		visitJobs <- WorkerJob{jobid: jobid, data: data[i], job: job}
+	}
+	//close(visitJobs)
+}
+
+
+
+func result(job repository.JobStorage) {
+	for result := range results {
+		repository.UpdateJobStatus(result.jobid, result.status, job)
+	}
+}
+
+func processURL(jobid string, data Job, status *int, job repository.JobStorage) {
+	storeid := data.StoreId
+
+	for j := 0; j < len(data.ImageUrl); j++ {
+		path := data.ImageUrl[j]
+
+		resp, err := http.Get(path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer resp.Body.Close()
+		m, _, err := image.Decode(resp.Body)
+
+		if err != nil {
+			*status = 2
+			_, err := repository.AddFailed(jobid, storeid, job)
+			if err != nil {
+				return
+			}
+			break
+		}
+
+		g := m.Bounds()
+		height := g.Dy()
+		width := g.Dx()
+		perimeter := 2 * (height + width)
+
+		rand.Seed(time.Now().Unix())
+		randomNum := 10000 + rand.Intn(400-100)
+		time.Sleep(time.Duration(randomNum) * time.Millisecond)
+
+		_, _ = repository.AddImage(jobid, storeid, perimeter, job)
+		if err != nil {
+			return
+		}
+	}
+
 }
 
 func processImage(job repository.JobStorage, data []Job, jobid string) error {
@@ -56,6 +144,7 @@ func processImage(job repository.JobStorage, data []Job, jobid string) error {
 			}
 			defer resp.Body.Close()
 			m, _, err := image.Decode(resp.Body)
+
 			if err != nil {
 				status = 2
 				_, err := repository.AddFailed(jobid, storeid, job)
@@ -64,13 +153,14 @@ func processImage(job repository.JobStorage, data []Job, jobid string) error {
 				}
 				break
 			}
+
 			g := m.Bounds()
 			height := g.Dy()
 			width := g.Dx()
 			perimeter := 2 * (height + width)
 
 			rand.Seed(time.Now().Unix())
-			randomNum := 100 + rand.Intn(400-100)
+			randomNum := 10000 + rand.Intn(400-100)
 			time.Sleep(time.Duration(randomNum) * time.Millisecond)
 
 			_, _ = repository.AddImage(jobid, storeid, perimeter, job)
@@ -121,7 +211,16 @@ func addJob(job repository.JobStorage) func(w http.ResponseWriter, r *http.Reque
 			return
 		}
 
-		go processImage(job, newJob.Visits, jobid)
+		go allocateVisits(newJob.Visits, jobid, job)
+
+		//done := make(chan bool)
+		go result(job)
+
+		noOfWorkers := 10
+		go createWorkerPool(noOfWorkers)
+		//<-done
+
+		//go processImage(job, newJob.Visits, jobid)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
