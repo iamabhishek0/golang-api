@@ -87,7 +87,7 @@ func worker(wg *sync.WaitGroup) {
 	wg.Done()
 }
 
-func createWorkerPool(noOfWorkers int) {
+func CreateWorkerPool(noOfWorkers int) {
 	var wg sync.WaitGroup
 	for i := 0; i < noOfWorkers; i++ {
 		wg.Add(1)
@@ -97,8 +97,7 @@ func createWorkerPool(noOfWorkers int) {
 	close(results)
 }
 
-
-func result(job repository.JobStorage) {
+func VisitResult(job repository.JobStorage) {
 	for result := range results {
 		repository.UpdateJobStatus(result.jobid, *result.status, job)
 	}
@@ -111,14 +110,14 @@ func imageWorker(wg *sync.WaitGroup, jobDB repository.JobStorage) {
 		if err == nil {
 			imageResults <- ImageResult{perimeter, job.jobid, job.storeid}
 		}
-		if *job.status==2 {
+		if *job.status == 2 {
 			repository.UpdateJobStatus(job.jobid, *job.status, jobDB)
 		}
 	}
 	wg.Done()
 }
 
-func createImageWorkerPool(noOfWorkers int, job repository.JobStorage) {
+func CreateImageWorkerPool(noOfWorkers int, job repository.JobStorage) {
 	var wg sync.WaitGroup
 	for i := 0; i < noOfWorkers; i++ {
 		wg.Add(1)
@@ -134,7 +133,7 @@ func allocateImage(data []string, jobid string, storeid string, job repository.J
 	}
 }
 
-func perimeterResult(job repository.JobStorage) {
+func PerimeterResult(job repository.JobStorage) {
 	for result := range imageResults {
 		_, _ = repository.AddImage(result.jobid, result.storeid, result.perimeter, job)
 	}
@@ -171,10 +170,6 @@ func processPerimeter(data ImageJob) (perimeter int, err error) {
 
 func processURL(jobid string, data Job, status *int, job repository.JobStorage) {
 	go allocateImage(data.ImageUrl, jobid, data.StoreId, job, status)
-	go perimeterResult(job)
-
-	noOfWorkers := 15
-	go createImageWorkerPool(noOfWorkers, job)
 }
 
 func addJob(job repository.JobStorage) func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -210,11 +205,7 @@ func addJob(job repository.JobStorage) func(w http.ResponseWriter, r *http.Reque
 			w.WriteHeader(500)
 			return
 		}
-
 		go allocateVisits(newJob.Visits, jobid, job)
-
-		noOfWorkers := 10
-		go createWorkerPool(noOfWorkers)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)

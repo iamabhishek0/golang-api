@@ -17,6 +17,14 @@ func main() {
 
 	router := rest.Handler(*repo)
 
+	go rest.VisitResult(*repo)
+	noOfWorkers := 10
+	go rest.CreateWorkerPool(noOfWorkers)
+
+	go rest.PerimeterResult(*repo)
+	noOfImageWorkers := 15
+	go rest.CreateImageWorkerPool(noOfImageWorkers, *repo)
+
 	fmt.Println("The server is up on : http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
